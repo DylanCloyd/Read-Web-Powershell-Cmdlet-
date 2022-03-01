@@ -7,11 +7,33 @@
 # Parameter 2: [hashtable]@{[string]"ReturnString1"=[string]"Menu Entry 1";[string]"ReturnString2"=[string]"Menu Entry 2";[string]"ReturnString3"=[string]"Menu Entry 3"
 # Return     : Select String
 # For example:
-# Web  "Choose your site" @{"news"="circle";"worldnews"="square";"sysadmin"="triangle";"powershell"="oval"}
+# Web  @{"news"="circle";"worldnews"="square";"sysadmin"="triangle";"powershell"="oval"}
 # #############################################################################
 
-function Web([System.String]$sMenuTitle,[System.Collections.Hashtable]$hMenuEntries)
+
+# convert urls to rss tables 
+function linktotable($a) { ([XML]( Invoke-WebRequest $a -Method Get).Content | Select -ExpandProperty Feed).Entry |Select Updated, Title }
+
+
+
+
+function Web
 {
+    # default hashtable of selections 
+    [System.Collections.Hashtable]$hMenuEntries = (@{"/r/news"="news";"/r/worldnews"="worldnews";"/r/sysadmin"="sysadmin";"/r/powershell"="powershell"} )
+    
+
+    # Additional Variables for different site choices 
+    
+    $rss1 = Invoke-WebRequest "https://www.reddit.com/r/news/.rss" -Method Get
+    $rss2 = Invoke-WebRequest "https://www.reddit.com/r/worldnews/.rss" -Method Get
+    $rss3 = Invoke-WebRequest "https://www.reddit.com/r/sysadmin/.rss" -Method Get
+    $rss4 = Invoke-WebRequest "https://www.reddit.com/r/powershell.rss" -Method Get
+    
+    # Additional Variables for Parsing XML
+
+    $feeds = [XML]$rss.Content | Select -ExpandProperty Feed
+    $pair = ($feeds.Entry | Select Updated, Title)
     # Orginal 
     [System.Int16]$iSavedBackgroundColor=[System.Console]::BackgroundColor
     [System.Int16]$iSavedForegroundColor=[System.Console]::ForegroundColor
@@ -34,10 +56,10 @@ function Web([System.String]$sMenuTitle,[System.Collections.Hashtable]$hMenuEntr
     [Hashtable]$hMenuHotKeyList=@{};
     [Hashtable]$hMenuHotKeyListReverse=@{};
     [System.Int16]$iMenuHotKeyChar=0
-    [System.String]$sValidChars=""
+    [System.String]$sValidChars=" "
     [System.Console]::WriteLine(" "+$sMenuTitle)
     #define output 
-    $a = ( Invoke-WebRequest https://ww.reddit.com/r/news).allelements.innertext | Select-String -NotMatch 'reddit|share|message the mods|save|hide|do not post|please post any|report|your account|all users claiming|your post|your comment|images will be removed|to jokes or|result in a ban|title may contain|post asking for|self post|submitted|log in or|soliciting money|🏾|[)]$|^\/+' | Select-String '.{30,}' | Out-String -Width 60 | Get-Unique
+    $a = " (response) "
     # Nummer -> Key
     $iMenuLoopCount=1
     # Start Hotkeys mit "1"!
@@ -87,12 +109,12 @@ function Web([System.String]$sMenuTitle,[System.Collections.Hashtable]$hMenuEntr
         }
         [System.Console]::BackgroundColor=$iMenuBackGroundColor
         [System.Console]::ForegroundColor=$iMenuForeGroundColor
-        [System.Console]::Write("  going to : " )
+        [System.Console]::Write("make your selection:    " )
         if (($iMenuStartLineAbsolute+$iMenuLoopCount) -gt [System.Console]::BufferHeight){
             $iBufferFullOffset=($iMenuStartLineAbsolute+$iMenuLoopCount)-[System.Console]::BufferHeight
         }
         ####### End Menu #######
-        ####### Read Kex from Console 
+        ####### Read Key from Console 
         $oInputChar=[System.Console]::ReadKey($true)
         # Down Arrow?
         if ([System.Int16]$oInputChar.Key -eq [System.ConsoleKey]::DownArrow){
@@ -104,7 +126,7 @@ function Web([System.String]$sMenuTitle,[System.Collections.Hashtable]$hMenuEntr
         elseif([System.Int16]$oInputChar.Key -eq [System.ConsoleKey]::UpArrow){
             if ($iMenuSelectLine -gt 1){
                 $iMenuSelectLine--
-            }
+        }
         }
         elseif([System.Char]::IsLetterOrDigit($oInputChar.KeyChar)){
             [System.Console]::Write($oInputChar.KeyChar.ToString())    
@@ -118,13 +140,13 @@ function Web([System.String]$sMenuTitle,[System.Collections.Hashtable]$hMenuEntr
     [System.Console]::BackgroundColor=$iSavedBackgroundColor
     if($oInputChar.Key -eq [System.ConsoleKey]::Enter){
         [System.Console]::Writeline($hMenuHotKeyList[$iMenuSelectLine])
-        return([System.String]$hMenu.Item($iMenuSelectLine) + $a)   
+        Write-Output $pair
+    return([System.String]$hMenu.Item($iMenuSelectLine))  
         }
     else{
         [System.Console]::Writeline("")
         return($hMenu[$hMenuHotKeyListReverse[$oInputChar.KeyChar]]) 
         }
-
 
     
     
